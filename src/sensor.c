@@ -11,10 +11,18 @@
 #include <stdlib.h>
 #include "serial.h"
 
+#define SENSOR_HOST_NUMBER 4 // 4 USB interfaces
+struct Sensor sensor_host[SENSOR_HOST_NUMBER];
+
+#ifdef __linux
 #include <unistd.h>
+#endif
+
+
 #include <pthread.h>
 pthread_t polling_thread;
-pthread_mutex_t polling_control_access;
+pthread_mutex_t polling_control_access = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t serial_access = PTHREAD_MUTEX_INITIALIZER;
 
 struct polling_control
 {
@@ -107,62 +115,95 @@ int sendControl(struct Sensor sensor)
 
 int queryData(struct Sensor * sensor)
 {
-	int packet_len = 3 + getTypeLength(sensor.data_type);
+	int packet_len = 3 + getTypeLength(sensor->data_type);
 	struct Packet * packet = malloc(packet_len);
 
-	packet->id = sensor.sensor_number + sensor.sensor_type;
+	packet->id = sensor->sensor_number + sensor->sensor_type;
 	packet->cmd = CMD_QUERY;
-	packet->data_type = sensor.data_type;
-	memcpy(packet->data, sensor.data, packet_len - 3);
+	packet->data_type = sensor->data_type;
+	memcpy(packet->data, sensor->data, packet_len - 3);
 
 	Serial_SendMultiBytes((unsigned char *) packet, packet_len);
 	return packet_len;
 }
 
-int Sensor_init(void)
-{
-	Serial_Init();
-	return 0;
-}
-int * SensorPolling(void)
+void * SensorPolling(void * host_number) // thread
 {
 	unsigned char poll_en = 0;
+	unsigned char time_poll = 0;
+	int host = (int) host_number;
+
+	if (host >= SENSOR_HOST_NUMBER)
+	{
+		printf("Host number not valid.\r\nIt should be lester than %d.\r\n", SENSOR_HOST_NUMBER);
+		printf("Thread exiting.\r\n");
+		pthread_exit(NULL);
+	}
+
 	while(1)
 	{
-		if (pthread_mutex_trylock(polling_control_access) == 0)
+		if (pthread_mutex_trylock(&polling_control_access) == 0)
 		{
-			pthread_mutex_lock(polling_control_access);
+			pthread_mutex_lock(&polling_control_access);
 			poll_en = polling_control.enable;
-			pthread_mutex_unlock(polling_control_access);
+			time_poll = polling_control.time_poll_ms * 1000;
+			pthread_mutex_unlock(&polling_control_access);
 		}
 
 		if (poll_en)
 		{
+			if (sensor_host[host].sensor_type != 0xff)
+			{
 
+			}
+			usleep(time_poll);
 		}
+	}
+}
+int Sensor_init(void)
+{
+	int i = 0;
+	printf("Initial Sensor Host.\r\n");
+
+	pthread_mutex_init(&polling_control_access, NULL);
+	pthread_mutex_unlock(&polling_control_access);
+	pthread_mutex_init(&serial_access, NULL);
+	pthread_mutex_unlock(&serial_access);
+	polling_control.enable = 0;
+	polling_control.time_poll_ms = 50;
+	Serial_Init();
+	for (i = 0; i < SENSOR_HOST_NUMBER; i++)
+	{
+		printf("Initial Sensor Host %d parameters.\r\n", i);
+		sensor_host[i].data_type = TYPE_FLOAT;
+		sensor_host[i].sensor_number = 0xff;	// unknown
+		sensor_host[i].sensor_type = 0xff;		// unknown
+
+		printf("Create thread poll for Sensor Host %d.\r\n", i);
+		pthread_create(&polling_thread, NULL, &SensorPolling, (void *)i);
 	}
 	return 0;
 }
 int Sensor_startPooling(void)
 {
-	while(pthread_mutex_trylock(polling_control_access) != 0)
+	while(pthread_mutex_trylock(&polling_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(polling_control_access);
+	pthread_mutex_lock(&polling_control_access);
 	polling_control.enable = 1;
-	pthread_mutex_unlock(polling_control_access);
+	pthread_mutex_unlock(&polling_control_access);
 
 	return 0;
 }
 
 int Sensor_stopPooling(void)
 {
-	while(pthread_mutex_trylock(polling_control_access) != 0)
+	while(pthread_mutex_trylock(&polling_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(polling_control_access);
+	pthread_mutex_lock(&polling_control_access);
 	polling_control.enable = 0;
-	pthread_mutex_unlock(polling_control_access);
+	pthread_mutex_unlock(&polling_control_access);
 
 	return 0;
 }
