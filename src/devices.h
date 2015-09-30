@@ -5,8 +5,8 @@
  *      Author: kieu
  */
 
-#ifndef SENSOR_H_
-#define SENSOR_H_
+#ifndef DEVICES_H_
+#define DEVICES_H_
 
 /* data type */
 #define TYPE_BYTE		0x01
@@ -40,23 +40,35 @@
 #define IS_LITTLE_ENDIAN(x) ((x & 0xf0) == LITTLE_ENDIAN)
 /* byte order */
 
-/* sensor type */
-#define SENSOR_TEMPERATURE		0x10
-#define SENSOR_ULTRA_SONIC		0x20
+/* devices type */
+#define DEV_SENSOR_TEMPERATURE		0x10
+#define DEV_SENSOR_ULTRA_SONIC		0x20
+#define DEV_SENSOR_GAS				0x30
+#define DEV_SENSOR_LIGTH			0x40
+#define DEV_BUZZER					0x50
+#define DEV_SIM900					0x60
+#define DEV_RF						0x70
+#define DEV_BLUETOOTH				0x80
 
-#define IS_SENSOR_TEMPERATURE(x) ((x & 0xf0) == SENSOR_TEMPERATURE)
-#define IS_SENSOR_ULTRA_SONIC(x) ((x & 0xf0) == SENSOR_ULTRA_SONIC)
-/* sensor type */
+#define IS_SENSOR_TEMPERATURE(x) 	((x & 0xf0) == DEV_SENSOR_TEMPERATURE)
+#define IS_SENSOR_ULTRA_SONIC(x) 	((x & 0xf0) == DEV_SENSOR_ULTRA_SONIC)
+#define IS_SENSOR_GAS(x) 			((x & 0xf0) == DEV_SENSOR_GAS)
+#define IS_SENSOR_LIGTH(x) 			((x & 0xf0) == DEV_SENSOR_LIGTH)
+#define IS_BUZZER(x) 				((x & 0xf0) == DEV_BUZZER)
+#define IS_SIM900(x) 				((x & 0xf0) == DEV_SIM900)
+#define IS_RF(x) 					((x & 0xf0) == DEV_RF)
+#define IS_BLUETOOTH(x) 			((x & 0xf0) == DEV_BLUETOOTH)
+/* devices type */
 
 /* command */
 #define CMD_CONTROL		0x01
 #define CMD_QUERY		0x02
 /* command */
 
-struct Sensor
+struct Device
 {
-	unsigned char sensor_number;
-	unsigned char sensor_type;
+	unsigned char number;
+	unsigned char type;
 
 	unsigned char data_type;
 	unsigned char data[];
@@ -70,14 +82,14 @@ struct Packet
 	unsigned char data[]; // checksum number on the data byte number data_type
 };
 
-extern int Sensor_init(void);
-extern int Sensor_startPooling(void);
-extern int Sensor_stopPooling(void);
+extern int Device_init(void);
+extern int Device_startPooling(void);
+extern int Device_stopPooling(void);
 
 extern int getTypeLength(unsigned char type);
 extern unsigned char checksum(char * packet);
-extern int getName(struct Sensor sensor, char * buffer, int buffer_len);
-extern int sendControl(struct Sensor sensor);
-extern int queryData(struct Sensor * sensor);
+extern int getName(struct Device dev, char * buffer, int buffer_len);
+extern int sendControl(struct Device dev);
+extern int queryData(struct Device * dev);
 
 #endif /* SENSOR_H_ */
