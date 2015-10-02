@@ -5,14 +5,15 @@
  *      Author: kieu
  */
 
-#include "sensor.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "devices.h"
 #include "serial.h"
 
-#define SENSOR_HOST_NUMBER 4 // 4 USB interfaces
-struct Sensor sensor_host[SENSOR_HOST_NUMBER];
+#define DEV_HOST_NUMBER 4 // 4 USB interfaces
+struct Device dev_host[DEV_HOST_NUMBER];
 
 #ifdef __linux
 #include <unistd.h>
@@ -82,13 +83,13 @@ unsigned char checksum(char * packet)
 	return checksum;
 }
 
-int getName(struct Sensor sensor, char * buffer, int buffer_len)
+int getName(struct Device dev, char * buffer, int buffer_len)
 {
-	if (IS_SENSOR_TEMPERATURE(sensor.sensor_type))
+	if (IS_SENSOR_TEMPERATURE(dev.type))
 	{
 
 	}
-	else if (IS_SENSOR_ULTRA_SONIC(sensor.sensor_type))
+	else if (IS_SENSOR_ULTRA_SONIC(dev.type))
 	{
 
 	}
@@ -99,43 +100,43 @@ int getName(struct Sensor sensor, char * buffer, int buffer_len)
 	return 0;
 }
 
-int sendControl(struct Sensor sensor)
+int sendControl(struct Device dev)
 {
-	int packet_len = 3 + getTypeLength(sensor.data_type);
+	int packet_len = 3 + getTypeLength(dev.data_type);
 	struct Packet * packet = malloc(packet_len);
 
-	packet->id = sensor.sensor_number + sensor.sensor_type;
+	packet->id = dev.number + dev.type;
 	packet->cmd = CMD_CONTROL;
-	packet->data_type = sensor.data_type;
-	memcpy(packet->data, sensor.data, packet_len - 3);
+	packet->data_type = dev.data_type;
+	memcpy(packet->data, dev.data, packet_len - 3);
 
 	Serial_SendMultiBytes((unsigned char *) packet, packet_len);
 	return 0;
 }
 
-int queryData(struct Sensor * sensor)
+int queryData(struct Device * dev)
 {
-	int packet_len = 3 + getTypeLength(sensor->data_type);
+	int packet_len = 3 + getTypeLength(dev->data_type);
 	struct Packet * packet = malloc(packet_len);
 
-	packet->id = sensor->sensor_number + sensor->sensor_type;
+	packet->id = dev->number + dev->type;
 	packet->cmd = CMD_QUERY;
-	packet->data_type = sensor->data_type;
-	memcpy(packet->data, sensor->data, packet_len - 3);
+	packet->data_type = dev->data_type;
+	memcpy(packet->data, dev->data, packet_len - 3);
 
 	Serial_SendMultiBytes((unsigned char *) packet, packet_len);
 	return packet_len;
 }
 
-void * SensorPolling(void * host_number) // thread
+void * DevicePolling(void * host_number) // thread
 {
 	unsigned char poll_en = 0;
 	unsigned char time_poll = 0;
 	int host = (int) host_number;
 
-	if (host >= SENSOR_HOST_NUMBER)
+	if (host >= DEV_HOST_NUMBER)
 	{
-		printf("Host number not valid.\r\nIt should be lester than %d.\r\n", SENSOR_HOST_NUMBER);
+		printf("Host number not valid.\r\nIt should be lester than %d.\r\n", DEV_HOST_NUMBER);
 		printf("Thread exiting.\r\n");
 		pthread_exit(NULL);
 	}
@@ -152,7 +153,7 @@ void * SensorPolling(void * host_number) // thread
 
 		if (poll_en)
 		{
-			if (sensor_host[host].sensor_type != 0xff)
+			if (dev_host[host].type != 0xff)
 			{
 
 			}
@@ -160,7 +161,7 @@ void * SensorPolling(void * host_number) // thread
 		}
 	}
 }
-int Sensor_init(void)
+int Device_init(void)
 {
 	int i = 0;
 	printf("Initial Sensor Host.\r\n");
@@ -172,19 +173,19 @@ int Sensor_init(void)
 	polling_control.enable = 0;
 	polling_control.time_poll_ms = 50;
 	Serial_Init();
-	for (i = 0; i < SENSOR_HOST_NUMBER; i++)
+	for (i = 0; i < DEV_HOST_NUMBER; i++)
 	{
 		printf("Initial Sensor Host %d parameters.\r\n", i);
-		sensor_host[i].data_type = TYPE_FLOAT;
-		sensor_host[i].sensor_number = 0xff;	// unknown
-		sensor_host[i].sensor_type = 0xff;		// unknown
+		dev_host[i].data_type = TYPE_FLOAT;
+		dev_host[i].number = 0xff;	// unknown
+		dev_host[i].type = 0xff;		// unknown
 
 		printf("Create thread poll for Sensor Host %d.\r\n", i);
-		pthread_create(&polling_thread, NULL, &SensorPolling, (void *)i);
+		pthread_create(&polling_thread, NULL, &DevicePolling, (void *)i);
 	}
 	return 0;
 }
-int Sensor_startPooling(void)
+int Device_startPooling(void)
 {
 	while(pthread_mutex_trylock(&polling_control_access) != 0)
 		usleep(100);
@@ -196,7 +197,7 @@ int Sensor_startPooling(void)
 	return 0;
 }
 
-int Sensor_stopPooling(void)
+int Device_stopPooling(void)
 {
 	while(pthread_mutex_trylock(&polling_control_access) != 0)
 		usleep(100);
