@@ -12,9 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+pthread_mutex_t queue_private_access = PTHREAD_MUTEX_INITIALIZER;
+
 struct queue_private
 {
 	int ID; // unique identify
+	int data_length;
 	char * data;
 };
 
