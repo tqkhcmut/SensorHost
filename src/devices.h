@@ -49,6 +49,8 @@
 #define DEV_SIM900					0x60
 #define DEV_RF						0x70
 #define DEV_BLUETOOTH				0x80
+// special device for my thesis, it have all temperature, lighting, and gas sensors
+#define DEV_MY_THESIS					0x90
 
 #define IS_SENSOR_TEMPERATURE(x) 	((x & 0xf0) == DEV_SENSOR_TEMPERATURE)
 #define IS_SENSOR_ULTRA_SONIC(x) 	((x & 0xf0) == DEV_SENSOR_ULTRA_SONIC)
@@ -58,6 +60,7 @@
 #define IS_SIM900(x) 				((x & 0xf0) == DEV_SIM900)
 #define IS_RF(x) 					((x & 0xf0) == DEV_RF)
 #define IS_BLUETOOTH(x) 			((x & 0xf0) == DEV_BLUETOOTH)
+#define IS_MY_THESIS(x) 			((x & 0xf0) == DEV_MY_THESIS)
 /* devices type */
 
 /* command */
@@ -65,13 +68,28 @@
 #define CMD_QUERY		0x02
 /* command */
 
+struct polling_control
+{
+	unsigned char enable;
+	unsigned char time_poll_ms;
+};
+
 struct Device
 {
 	unsigned char number;
 	unsigned char type;
 
+	struct polling_control polling_control;
+
 	unsigned char data_type;
 	unsigned char data[];
+};
+
+struct HostInfo
+{
+	unsigned char buzzer_available;
+	unsigned char sim900_available;
+	unsigned char rf_available;
 };
 
 struct Packet
@@ -83,8 +101,8 @@ struct Packet
 };
 
 extern int Device_init(void);
-extern int Device_startPooling(void);
-extern int Device_stopPooling(void);
+extern int Device_startPooling(int host_number);
+extern int Device_stopPooling(int host_number);
 
 extern int getTypeLength(unsigned char type);
 extern unsigned char checksum(char * packet);
