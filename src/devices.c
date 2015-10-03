@@ -12,8 +12,6 @@
 #include "devices.h"
 #include "serial.h"
 
-#define DEV_HOST_NUMBER 4 // 4 USB interfaces
-struct Device dev_host[DEV_HOST_NUMBER];
 
 #ifdef __linux
 #include <unistd.h>
@@ -21,10 +19,16 @@ struct Device dev_host[DEV_HOST_NUMBER];
 
 
 #include <pthread.h>
-pthread_t polling_thread;
-pthread_mutex_t polling_control_access = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t serial_access = PTHREAD_MUTEX_INITIALIZER;
 
+#define DEV_HOST_NUMBER 4 // 4 USB interfaces
+
+pthread_t polling_thread[DEV_HOST_NUMBER];
+struct Device dev_host[DEV_HOST_NUMBER];
+
+// protect device host access
+pthread_mutex_t device_control_access = PTHREAD_MUTEX_INITIALIZER;
+// protect serial access
+pthread_mutex_t serial_access = PTHREAD_MUTEX_INITIALIZER;
 
 int getTypeLength(unsigned char type)
 {
@@ -119,13 +123,24 @@ int queryData(struct Device * dev)
 	memcpy(packet->data, dev->data, packet_len - 3);
 
 	Serial_SendMultiBytes((unsigned char *) packet, packet_len);
-	return packet_len;
+	// sleep 1ms for timeout
+	usleep(1000);
+	packet_len = Serial_Available();
+	if (packet_len)
+	{
+		Serial_GetData((char *) packet, packet_len);
+
+		return packet_len;
+	}
+	else
+		return 0;
 }
 
 void * DevicePolling(void * host_number) // thread
 {
 	unsigned char poll_en = 0;
-	unsigned char time_poll = 0;
+	unsigned int time_poll = 0;
+	unsigned char destroy = 0;
 	int host = (int) host_number;
 
 	if (host >= DEV_HOST_NUMBER)
@@ -137,12 +152,17 @@ void * DevicePolling(void * host_number) // thread
 
 	while(1)
 	{
-		if (pthread_mutex_trylock(&polling_control_access) == 0)
+		if (pthread_mutex_trylock(&device_control_access) == 0)
 		{
-			pthread_mutex_lock(&polling_control_access);
+			pthread_mutex_lock(&device_control_access);
 			poll_en = dev_host[host].polling_control.enable;
 			time_poll = dev_host[host].polling_control.time_poll_ms * 1000;
-			pthread_mutex_unlock(&polling_control_access);
+			destroy = dev_host[host].polling_control.destroy;
+			pthread_mutex_unlock(&device_control_access);
+		}
+		if (destroy)
+		{
+			pthread_exit(NULL);
 		}
 
 		if (poll_en)
@@ -166,8 +186,19 @@ void * DevicePolling(void * host_number) // thread
 				case DEV_SENSOR_GAS:
 					break;
 				case DEV_SIM900:
-					break;;
+					break;
 				case DEV_MY_THESIS:
+					if (pthread_mutex_trylock(&serial_access) == 0)
+					{
+						pthread_mutex_lock(&serial_access);
+						queryData(&dev_host[host]);
+						pthread_mutex_unlock(&serial_access);
+					}
+					else
+					{
+						printf("Thread: %d. host: %d. Fail to access serial port.",
+								polling_thread[host], host);
+					}
 					break;
 				default:
 					break;
@@ -186,8 +217,8 @@ int Device_init(void)
 	int i = 0;
 	printf("Initial Sensor Host.\r\n");
 
-	pthread_mutex_init(&polling_control_access, NULL);
-	pthread_mutex_unlock(&polling_control_access);
+	pthread_mutex_init(&device_control_access, NULL);
+	pthread_mutex_unlock(&device_control_access);
 	pthread_mutex_init(&serial_access, NULL);
 	pthread_mutex_unlock(&serial_access);
 	Serial_Init();
@@ -199,32 +230,49 @@ int Device_init(void)
 		dev_host[i].type = 0xff;		// unknown
 		dev_host[i].polling_control.enable = 0;
 		dev_host[i].polling_control.time_poll_ms = 50;
+		dev_host[i].polling_control.destroy = 0;
 
 		printf("Create thread poll for Sensor Host %d.\r\n", i);
-		pthread_create(&polling_thread, NULL, &DevicePolling, (void *)i);
+		pthread_create(&polling_thread[i], NULL, &DevicePolling, (void *)i);
 	}
 	return 0;
 }
 int Device_startPooling(int host_number)
 {
-	while(pthread_mutex_trylock(&polling_control_access) != 0)
+	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(&polling_control_access);
+	pthread_mutex_lock(&device_control_access);
 	dev_host[host_number].polling_control.enable = 1;
-	pthread_mutex_unlock(&polling_control_access);
+	pthread_mutex_unlock(&device_control_access);
 
 	return 0;
 }
 
 int Device_stopPooling(int host_number)
 {
-	while(pthread_mutex_trylock(&polling_control_access) != 0)
+	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(&polling_control_access);
+	pthread_mutex_lock(&device_control_access);
 	dev_host[host_number].polling_control.enable = 0;
-	pthread_mutex_unlock(&polling_control_access);
+	pthread_mutex_unlock(&device_control_access);
+
+	return 0;
+}
+
+int Device_destroyAll(void)
+{
+	int i;
+	while(pthread_mutex_trylock(&device_control_access) != 0)
+		usleep(100);
+
+	pthread_mutex_lock(&device_control_access);
+	for (i = 0; i < DEV_HOST_NUMBER; i++)
+	{
+		dev_host[i].polling_control.destroy = 1;
+	}
+	pthread_mutex_unlock(&device_control_access);
 
 	return 0;
 }

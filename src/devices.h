@@ -70,6 +70,7 @@
 
 struct polling_control
 {
+	unsigned char destroy;
 	unsigned char enable;
 	unsigned char time_poll_ms;
 };
@@ -100,9 +101,17 @@ struct Packet
 	unsigned char data[]; // checksum number on the data byte number data_type
 };
 
+struct ThesisData
+{
+	float temperature;
+	float lighting;
+	float gas;
+};
+
 extern int Device_init(void);
 extern int Device_startPooling(int host_number);
 extern int Device_stopPooling(int host_number);
+extern int Device_destroyAll(void);
 
 extern int getTypeLength(unsigned char type);
 extern unsigned char checksum(char * packet);
