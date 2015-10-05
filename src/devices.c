@@ -114,8 +114,18 @@ int sendControl(struct Device dev)
 
 int queryData(struct Device * dev)
 {
-	int packet_len = 3 + getTypeLength(dev->data_type);
-	struct Packet * packet = malloc(packet_len);
+	int packet_len;
+	struct Packet * packet = NULL;
+	if (IS_MY_THESIS(dev->type))
+	{
+		packet_len = 3 + getTypeLength(dev->data_type);
+		packet = malloc(packet_len);
+	}
+	else
+	{
+		packet_len = 3 + sizeof (struct ThesisData);
+		packet = malloc(packet_len);
+	}
 
 	packet->id = dev->number + dev->type;
 	packet->cmd = CMD_QUERY;
@@ -130,10 +140,28 @@ int queryData(struct Device * dev)
 	{
 		Serial_GetData((char *) packet, packet_len);
 
+		dev->data_type = packet->data_type;
+		dev->type = packet->id & 0xf0;
+		dev->number = packet->id & 0x0f;
+		if (IS_MY_THESIS(packet->id))
+		{
+			dev->polling_control.time_poll_ms = 500;
+			memcpy(dev->data, packet->data, sizeof (struct ThesisData));
+		}
+		else
+		{
+			memcpy(dev->data, packet->data, getTypeLength(packet->data));
+		}
+		if (packet != NULL)
+			free(packet);
 		return packet_len;
 	}
 	else
+	{
+		if (packet != NULL)
+			free(packet);
 		return 0;
+	}
 }
 
 void * DevicePolling(void * host_number) // thread
@@ -191,12 +219,22 @@ void * DevicePolling(void * host_number) // thread
 					if (pthread_mutex_trylock(&serial_access) == 0)
 					{
 						pthread_mutex_lock(&serial_access);
-						queryData(&dev_host[host]);
+						if (queryData(&dev_host[host]))
+						{
+							printf("Thread: %d. host: %d. Got data from client.\n",
+									polling_thread[host], host);
+						}
+						else
+						{
+							printf("Thread: %d. host: %d. No client here.\n",
+									polling_thread[host], host);
+
+						}
 						pthread_mutex_unlock(&serial_access);
 					}
 					else
 					{
-						printf("Thread: %d. host: %d. Fail to access serial port.",
+						printf("Thread: %d. host: %d. Fail to access serial port.\n",
 								polling_thread[host], host);
 					}
 					break;

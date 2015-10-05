@@ -63,6 +63,12 @@
 #define IS_MY_THESIS(x) 			((x & 0xf0) == DEV_MY_THESIS)
 /* devices type */
 
+// default time polling
+//#define TEMPERATURE_POLL_TIME
+//#define ULTRA_SONIC_POLL_TIME
+//#define GAS
+//
+
 /* command */
 #define CMD_CONTROL		0x01
 #define CMD_QUERY		0x02
