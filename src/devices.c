@@ -150,7 +150,7 @@ int queryData(struct Device * dev)
 		}
 		else
 		{
-			memcpy(dev->data, packet->data, getTypeLength(packet->data));
+			memcpy(dev->data, packet->data, getTypeLength(packet->data_type));
 		}
 		if (packet != NULL)
 			free(packet);
@@ -222,12 +222,12 @@ void * DevicePolling(void * host_number) // thread
 						if (queryData(&dev_host[host]))
 						{
 							printf("Thread: %d. host: %d. Got data from client.\n",
-									polling_thread[host], host);
+									(int)polling_thread[host], host);
 						}
 						else
 						{
 							printf("Thread: %d. host: %d. No client here.\n",
-									polling_thread[host], host);
+									(int)polling_thread[host], host);
 
 						}
 						pthread_mutex_unlock(&serial_access);
@@ -235,7 +235,7 @@ void * DevicePolling(void * host_number) // thread
 					else
 					{
 						printf("Thread: %d. host: %d. Fail to access serial port.\n",
-								polling_thread[host], host);
+								(int)polling_thread[host], host);
 					}
 					break;
 				default:

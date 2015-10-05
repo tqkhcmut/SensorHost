@@ -33,11 +33,11 @@
 /* data type */
 
 /* byte order */
-#define BIG_ENDIAN		0x10
-#define LITTLE_ENDIAN	0x20
+#define BIG_ENDIAN_BYTE_ORDER		0x10
+#define LITTLE_ENDIAN_BYTE_ORDER	0x20
 
-#define IS_BIG_ENDIAN(x) ((x & 0xf0) == BIG_ENDIAN)
-#define IS_LITTLE_ENDIAN(x) ((x & 0xf0) == LITTLE_ENDIAN)
+#define IS_BIG_ENDIAN_BYTE_ORDER(x) ((x & 0xf0) == BIG_ENDIAN_BYTE_ORDER)
+#define IS_LITTLE_ENDIAN_BYTE_ORDER(x) ((x & 0xf0) == LITTLE_ENDIAN_BYTE_ORDER)
 /* byte order */
 
 /* devices type */
@@ -78,7 +78,7 @@ struct polling_control
 {
 	unsigned char destroy;
 	unsigned char enable;
-	unsigned char time_poll_ms;
+	unsigned int time_poll_ms;
 };
 
 struct Device
