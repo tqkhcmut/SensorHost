@@ -11,10 +11,11 @@
 
 #include "devices.h"
 #include "serial.h"
-
+#include "ishare.h"
 
 #ifdef __linux
 #include <unistd.h>
+#include "wiringPi.h"
 #endif
 
 
@@ -178,18 +179,29 @@ void * DevicePolling(void * host_number) // thread
 		pthread_exit(NULL);
 	}
 
+	printf("Thread: %d start with host: %d.\n",
+			(int)polling_thread[host], host);
+
 	while(1)
 	{
 		if (pthread_mutex_trylock(&device_control_access) == 0)
 		{
-			pthread_mutex_lock(&device_control_access);
 			poll_en = dev_host[host].polling_control.enable;
 			time_poll = dev_host[host].polling_control.time_poll_ms * 1000;
 			destroy = dev_host[host].polling_control.destroy;
 			pthread_mutex_unlock(&device_control_access);
 		}
+		else
+		{
+			printf("Thread: %d. host: %d. Fail to access device control.\n",
+					(int)polling_thread[host], host);
+			usleep(1000);
+		}
+
 		if (destroy)
 		{
+			printf("Thread: %d. host: %d. Destroying.\n",
+					(int)polling_thread[host], host);
 			pthread_exit(NULL);
 		}
 
@@ -197,9 +209,37 @@ void * DevicePolling(void * host_number) // thread
 		{
 			if (dev_host[host].type != 0xff)
 			{
+				if (pthread_mutex_trylock(&serial_access) == 0)
+				{
+					if (queryData(&dev_host[host]))
+					{
+						printf("Thread: %d. host: %d. Got data from device.\n",
+								(int)polling_thread[host], host);
+					}
+					else
+					{
+						printf("Thread: %d. host: %d. No device here.\n",
+								(int)polling_thread[host], host);
+
+					}
+					pthread_mutex_unlock(&serial_access);
+				}
+				else
+				{
+					printf("Thread: %d. host: %d. Fail to access serial port.\n",
+							(int)polling_thread[host], host);
+				}
+
 				switch (dev_host[host].type & 0xf0)
 				{
 				case DEV_SENSOR_TEMPERATURE:
+					printf("Thread: %d. host: %d. Temperature: %0.3f.\n",
+												(int)polling_thread[host], host, *(float *)&(dev_host[host].data[0]));
+
+					// adjust time polling
+
+					// save to shared memory
+
 					break;
 				case DEV_SENSOR_ULTRA_SONIC:
 					break;
@@ -216,27 +256,6 @@ void * DevicePolling(void * host_number) // thread
 				case DEV_SIM900:
 					break;
 				case DEV_MY_THESIS:
-					if (pthread_mutex_trylock(&serial_access) == 0)
-					{
-						pthread_mutex_lock(&serial_access);
-						if (queryData(&dev_host[host]))
-						{
-							printf("Thread: %d. host: %d. Got data from client.\n",
-									(int)polling_thread[host], host);
-						}
-						else
-						{
-							printf("Thread: %d. host: %d. No client here.\n",
-									(int)polling_thread[host], host);
-
-						}
-						pthread_mutex_unlock(&serial_access);
-					}
-					else
-					{
-						printf("Thread: %d. host: %d. Fail to access serial port.\n",
-								(int)polling_thread[host], host);
-					}
 					break;
 				default:
 					break;
@@ -244,10 +263,36 @@ void * DevicePolling(void * host_number) // thread
 			}
 			else
 			{
-				// query device
+				printf("Thread: %d. host: %d. Unknown device, identifying.\n",
+						(int)polling_thread[host], host);
+
+				// query broadcast id to identify what it is
+				// adjust time polling to 500 ms
+				time_poll = 500000;
+
+				if (pthread_mutex_trylock(&serial_access) == 0)
+				{
+					if (queryData(&dev_host[host]))
+					{
+						printf("Thread: %d. host: %d. Got data from client.\n",
+								(int)polling_thread[host], host);
+					}
+					else
+					{
+						printf("Thread: %d. host: %d. No client here.\n",
+								(int)polling_thread[host], host);
+
+					}
+					pthread_mutex_unlock(&serial_access);
+				}
+				else
+				{
+					printf("Thread: %d. host: %d. Fail to access serial port.\n",
+							(int)polling_thread[host], host);
+				}
 			}
 			usleep(time_poll);
-		}
+		}// query device
 	}
 }
 int Device_init(void)
@@ -256,9 +301,17 @@ int Device_init(void)
 	printf("Initial Sensor Host.\r\n");
 
 	pthread_mutex_init(&device_control_access, NULL);
-	pthread_mutex_unlock(&device_control_access);
+//	pthread_mutex_unlock(&device_control_access);
 	pthread_mutex_init(&serial_access, NULL);
-	pthread_mutex_unlock(&serial_access);
+//	pthread_mutex_unlock(&serial_access);
+
+	if (wiringPiSetup() != 0)
+	{
+		printf("Initial wiringPi fail.\n");
+		die(-1);
+	}
+	printf("Initial wiringPi successful.\n");
+
 	Serial_Init();
 	for (i = 0; i < DEV_HOST_NUMBER; i++)
 	{
@@ -277,11 +330,16 @@ int Device_init(void)
 }
 int Device_startPooling(int host_number)
 {
+	if (host_number < 1 || host_number > 4)
+	{
+		printf("Invalid Host Number. (1 - 4).\n");
+		return -1;
+	}
 	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(&device_control_access);
-	dev_host[host_number].polling_control.enable = 1;
+//	pthread_mutex_lock(&device_control_access);
+	dev_host[host_number-1].polling_control.enable = 1;
 	pthread_mutex_unlock(&device_control_access);
 
 	return 0;
@@ -292,7 +350,7 @@ int Device_stopPooling(int host_number)
 	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(&device_control_access);
+//	pthread_mutex_lock(&device_control_access);
 	dev_host[host_number].polling_control.enable = 0;
 	pthread_mutex_unlock(&device_control_access);
 
@@ -305,7 +363,7 @@ int Device_destroyAll(void)
 	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-	pthread_mutex_lock(&device_control_access);
+//	pthread_mutex_lock(&device_control_access);
 	for (i = 0; i < DEV_HOST_NUMBER; i++)
 	{
 		dev_host[i].polling_control.destroy = 1;

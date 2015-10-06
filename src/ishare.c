@@ -30,7 +30,7 @@ int iShare_Init(struct iShareHeader * iShareHeader)
 	/*
 	 * Create the segment.
 	 */
-	if ((shmid = shmget(key, size, IPC_CREAT | 0666)) < 0) {
+	if ((shmid = shmget(key, size, shmflg)) < 0) {
 		printf("shmget error.\n");
 		return -1;
 	}
