@@ -12,6 +12,7 @@
 #include <sys/shm.h>
 
 #include <stdio.h>
+#include <string.h>
 
 
 int iShare_Init(struct iShareHeader * iShareHeader)
@@ -38,7 +39,7 @@ int iShare_Init(struct iShareHeader * iShareHeader)
 	 * Now we attach the segment to our data space.
 	 */
 	if ((shm = shmat(shmid, NULL, 0)) == (char *) -1) {
-		prinf("shmat error");
+		printf("shmat error");
 		return -1;
 	}
 
@@ -62,8 +63,8 @@ int iShare_SaveToDisk(struct iShareHeader * iShareHeader, const char * filename)
 	struct iShareData * tmpData = iShareHeader->SensorData;
 	while(tmpData != NULL)
 	{
-		fwrite(tmpData->time, sizeof(float), 1, fp);
-		fwrite(tmpData->data, sizeof(float), 1, fp);
+		fwrite((const char *)&(tmpData->time), sizeof(float), 1, fp);
+		fwrite((const char *)&(tmpData->data), sizeof(float), 1, fp);
 		tmpData = tmpData->next;
 	}
 
@@ -81,6 +82,7 @@ int iShare_RestoreFromDisk(struct iShareHeader * iShareHeader, const char * file
 		return -1;
 	}
 
+	fclose(fp);
 
 	return 0;
 }
