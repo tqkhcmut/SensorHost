@@ -5,6 +5,30 @@
  *      Author: kieu
  */
 
+#include <endian.h>
+#if __BYTE_ORDER == __BIG_ENDIAN
+// No translation needed for big endian system
+#define Swap2Bytes(val) val
+#define Swap4Bytes(val) val
+#define Swap8Bytes(val) val
+#else
+// Swap 2 byte, 16 bit values:
+#define Swap2Bytes(val) \
+( (((val) >> 8) & 0x00FF) | (((val) << 8) & 0xFF00) )
+
+// Swap 4 byte, 32 bit values:
+#define Swap4Bytes(val) \
+( (((val) >> 24) & 0x000000FF) | (((val) >>  8) & 0x0000FF00) | \
+		(((val) <<  8) & 0x00FF0000) | (((val) << 24) & 0xFF000000) )
+
+// Swap 8 byte, 64 bit values:
+#define Swap8Bytes(val) \
+		( (((val) >> 56) & 0x00000000000000FF) | (((val) >> 40) & 0x000000000000FF00) | \
+				(((val) >> 24) & 0x0000000000FF0000) | (((val) >>  8) & 0x00000000FF000000) | \
+				(((val) <<  8) & 0x000000FF00000000) | (((val) << 24) & 0x0000FF0000000000) | \
+				(((val) << 40) & 0x00FF000000000000) | (((val) << 56) & 0xFF00000000000000) )
+#endif
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,20 +144,26 @@ int queryData(struct Device * dev)
 	if (IS_MY_THESIS(dev->type))
 	{
 		packet_len = 3 + getTypeLength(dev->data_type);
-		packet = malloc(packet_len);
+		packet = malloc(packet_len + 1);
 	}
 	else
 	{
 		packet_len = 3 + sizeof (struct ThesisData);
-		packet = malloc(packet_len);
+		packet = malloc(packet_len + 1);
 	}
 
 	packet->id = dev->number + dev->type;
 	packet->cmd = CMD_QUERY;
-	packet->data_type = dev->data_type;
+#if __BYTE_ORDER == __BIG_ENDIAN
+	packet->data_type = dev->data_type & 0xf0 + BIG_ENDIAN_BYTE_ORDER;
+#else
+	packet->data_type = dev->data_type & 0xf0 + LITTLE_ENDIAN_BYTE_ORDER;
+#endif
 	memcpy(packet->data, dev->data, packet_len - 3);
+	// add checksum byte
+	*(((char *)packet) + packet_len) = checksum((char *)packet);
 
-	Serial_SendMultiBytes((unsigned char *) packet, packet_len);
+	Serial_SendMultiBytes((unsigned char *) packet, packet_len + 1);
 	// sleep 1ms for timeout
 	usleep(1000);
 	packet_len = Serial_Available();
