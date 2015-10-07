@@ -36,6 +36,7 @@
 #include "devices.h"
 #include "serial.h"
 #include "ishare.h"
+#include "raspi_ext.h"
 
 #ifdef __linux
 #include <unistd.h>
@@ -335,12 +336,7 @@ int Device_init(void)
 	pthread_mutex_init(&serial_access, NULL);
 //	pthread_mutex_unlock(&serial_access);
 
-	if (wiringPiSetup() != 0)
-	{
-		printf("Initial wiringPi fail.\n");
-		die(-1);
-	}
-	printf("Initial wiringPi successful.\n");
+	RaspiExt_Init();
 
 	Serial_Init();
 	for (i = 0; i < DEV_HOST_NUMBER; i++)
