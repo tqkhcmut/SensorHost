@@ -17,6 +17,7 @@
 
 void die(int err)
 {
+	Device_destroyAll();
 	printf("Program exit with code: %d\n", err);
 	exit(err);
 }
@@ -35,12 +36,11 @@ int main (int argc, char * argv[])
 	Device_startPooling(4);
 
 
-	printf("Sensor Host: enter sleep for thread work.\n");
-	for (;;)
-	{
-		usleep(100000);
-		//Serial_SendMultiBytes("Hello from tqk.\n", 16);
-	}
+	printf("Sensor Host: enter sleep for other threads work.\n");
+
+	Device_waitForExit();
+
+	system("shutdown -h now");
 
 	return 0;
 }

@@ -89,7 +89,7 @@ struct Device
 	struct polling_control polling_control;
 
 	unsigned char data_type;
-	unsigned char data[];
+	unsigned char * data;
 };
 
 struct HostInfo
@@ -118,6 +118,7 @@ extern int Device_init(void);
 extern int Device_startPooling(int host_number);
 extern int Device_stopPooling(int host_number);
 extern int Device_destroyAll(void);
+extern int Device_waitForExit(void);
 
 extern int getTypeLength(unsigned char type);
 extern unsigned char checksum(char * packet);

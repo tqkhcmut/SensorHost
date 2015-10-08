@@ -37,6 +37,8 @@ typedef struct Date
 
 extern int RaspiExt_Init(void);
 extern int RaspiExt_PowerOff(void);
+extern int RaspiExt_DestroyAll(void);
+extern int RaspiExt_WaitForExit(void);
 extern int RaspiExt_LED_Run_Config(unsigned char mode, int time_ms);
 extern int RaspiExt_LED_Power_Config(unsigned char mode, int time_ms);
 extern int RaspiExt_LED_Hostx_Config(unsigned char mode, int time_ms, int host);

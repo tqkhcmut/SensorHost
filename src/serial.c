@@ -9,10 +9,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#define SERIAL_DIR_PIN 		23
+#define SERIAL_DIR_OUTPUT	{digitalWrite(SERIAL_DIR_PIN, HIGH);}
+#define SERIAL_DIR_INPUT	{digitalWrite(SERIAL_DIR_PIN, LOW);}
+
+
 #ifdef _WIN32
 LPCSTR  SerialDevName = "COM3";
 HANDLE hSerial;
 #elif __linux
+#include <unistd.h>
 const char * SerialDevName = "/dev/ttyAMA0";
 
 const int SerialBaudrate = 115200;
@@ -70,6 +76,10 @@ int Serial_Init(void)
 		return -1;
 	}
 	serialFlush(serial_fd);
+
+	pinMode(SERIAL_DIR_PIN, OUTPUT);
+	SERIAL_DIR_INPUT;
+
 	return serial_fd;
 #endif
 }
@@ -79,7 +89,7 @@ int Serial_DeInit(void)
 #ifdef _WIN32
 	CloseHandle(hSerial);
 #elif __linux
-
+	serialClose(serial_fd);
 #endif
 
 	return 0;
@@ -87,6 +97,8 @@ int Serial_DeInit(void)
 
 int Serial_SendByte(unsigned char byte)
 {
+	SERIAL_DIR_OUTPUT;
+
 #ifdef _WIN32
 	DWORD dwBytesRead = 0;
 	if(!WriteFile(hSerial, &byte, 1, &dwBytesRead, NULL))
@@ -96,12 +108,18 @@ int Serial_SendByte(unsigned char byte)
 	return dwBytesRead;
 #elif __linux
 	serialPutchar(serial_fd, byte);
+	usleep(8000000/SerialBaudrate);
 #endif
+
+	SERIAL_DIR_INPUT;
+
 	return 0;
 }
 
 int Serial_SendMultiBytes(unsigned char * bytes, int len)
 {
+	SERIAL_DIR_OUTPUT;
+
 #ifdef _WIN32
 	DWORD dwBytesRead = 0;
 	if(!WriteFile(hSerial, bytes, len, &dwBytesRead, NULL))
@@ -112,8 +130,14 @@ int Serial_SendMultiBytes(unsigned char * bytes, int len)
 #elif __linux
 	int i;
 	for (i = 0; i < len; i++)
+	{
 		serialPutchar(serial_fd, bytes[i]);
+		usleep(8000000/SerialBaudrate);
+	}
 #endif
+
+	SERIAL_DIR_INPUT;
+
 	return 0;
 }
 

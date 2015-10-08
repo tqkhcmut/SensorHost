@@ -138,31 +138,75 @@ int sendControl(struct Device dev)
 	return 0;
 }
 
+int DeviceInfo(struct Device * dev)
+{
+	int i;
+	printf("Device information.\n");
+	printf("Device Type: %02X.\n", dev->type);
+	printf("Device Number: %02X.\n", dev->number);
+	printf("Device Data Type: %02X.\n", dev->data_type);
+	printf("Device Data: ");
+	for (i = 0; i < getTypeLength(dev->data_type); i++)
+	{
+		printf("%02X ", dev->data[i]);
+	}
+	printf("\n");
+	return i;
+}
+
 int queryData(struct Device * dev)
 {
 	int packet_len;
 	struct Packet * packet = NULL;
-	if (IS_MY_THESIS(dev->type))
+
+	if (dev->data == NULL)
 	{
-		packet_len = 3 + getTypeLength(dev->data_type);
-		packet = malloc(packet_len + 1);
+		if (IS_MY_THESIS(dev->type))
+		{
+			dev->data = malloc(sizeof (struct ThesisData));
+			memset(dev->data, 0, sizeof (struct ThesisData));
+		}
+		else
+		{
+			dev->data = malloc(getTypeLength(dev->data_type));
+			memset(dev->data, 0, getTypeLength(dev->data_type));
+		}
 	}
-	else
+
+	DeviceInfo(dev);
+
+	if (IS_MY_THESIS(dev->type))
 	{
 		packet_len = 3 + sizeof (struct ThesisData);
 		packet = malloc(packet_len + 1);
 	}
+	else
+	{
+		packet_len = 3 + getTypeLength(dev->data_type);
+		packet = malloc(packet_len + 1);
+	}
 
-	packet->id = dev->number + dev->type;
+	packet->id = dev->number & dev->type;
 	packet->cmd = CMD_QUERY;
 #if __BYTE_ORDER == __BIG_ENDIAN
-	packet->data_type = dev->data_type & 0xf0 + BIG_ENDIAN_BYTE_ORDER;
+	packet->data_type = (dev->data_type & 0x0f) | BIG_ENDIAN_BYTE_ORDER;
 #else
-	packet->data_type = dev->data_type & 0xf0 + LITTLE_ENDIAN_BYTE_ORDER;
+	packet->data_type = (dev->data_type & 0x0f) | LITTLE_ENDIAN_BYTE_ORDER;
 #endif
 	memcpy(packet->data, dev->data, packet_len - 3);
 	// add checksum byte
 	*(((char *)packet) + packet_len) = checksum((char *)packet);
+
+#ifdef __DEBUG_MODE
+	printf("Query Packet: ");
+	int i;
+	for (i = 0; i < packet_len + 1; i++)
+	{
+		printf("%02X ", *((unsigned char *) packet + i));
+	}
+	printf("Checksum: %02X.\n", *(((char *)packet) + packet_len));
+	printf("\n");
+#endif
 
 	Serial_SendMultiBytes((unsigned char *) packet, packet_len + 1);
 	// sleep 1ms for timeout
@@ -172,7 +216,20 @@ int queryData(struct Device * dev)
 	{
 		Serial_GetData((char *) packet, packet_len);
 
-		dev->data_type = packet->data_type;
+		if (dev->data_type != (packet->data_type & 0x0f))
+		{
+			free(dev->data);
+			if (IS_MY_THESIS(packet->data_type & 0x0f))
+			{
+				dev->data = malloc(sizeof(struct ThesisData));
+			}
+			else
+			{
+				dev->data = malloc(getTypeLength(packet->data_type & 0x0f));
+			}
+		}
+
+		dev->data_type = packet->data_type & 0x0f;
 		dev->type = packet->id & 0xf0;
 		dev->number = packet->id & 0x0f;
 		if (IS_MY_THESIS(packet->id))
@@ -202,6 +259,7 @@ void * DevicePolling(void * host_number) // thread
 	unsigned int time_poll = 0;
 	unsigned char destroy = 0;
 	int host = (int) host_number;
+	unsigned char trying_time = 0;
 
 	if (host >= DEV_HOST_NUMBER)
 	{
@@ -240,7 +298,20 @@ void * DevicePolling(void * host_number) // thread
 		{
 			if (dev_host[host].type != 0xff)
 			{
-				if (pthread_mutex_trylock(&serial_access) == 0)
+				trying_time = 0;
+				while (pthread_mutex_trylock(&serial_access) != 0)
+				{
+					usleep(1000);
+					trying_time ++;
+					if (trying_time > 10)
+						break;
+				}
+				if (trying_time > 10)
+				{
+					printf("Thread: %d. host: %d. Fail to access serial port.\n",
+							(int)polling_thread[host], host);
+				}
+				else
 				{
 					if (queryData(&dev_host[host]))
 					{
@@ -255,17 +326,12 @@ void * DevicePolling(void * host_number) // thread
 					}
 					pthread_mutex_unlock(&serial_access);
 				}
-				else
-				{
-					printf("Thread: %d. host: %d. Fail to access serial port.\n",
-							(int)polling_thread[host], host);
-				}
 
 				switch (dev_host[host].type & 0xf0)
 				{
 				case DEV_SENSOR_TEMPERATURE:
 					printf("Thread: %d. host: %d. Temperature: %0.3f.\n",
-												(int)polling_thread[host], host, *(float *)&(dev_host[host].data[0]));
+												(int)polling_thread[host], host, *(float *)(dev_host[host].data));
 
 					// adjust time polling
 
@@ -301,25 +367,34 @@ void * DevicePolling(void * host_number) // thread
 				// adjust time polling to 500 ms
 				time_poll = 500000;
 
-				if (pthread_mutex_trylock(&serial_access) == 0)
+
+				trying_time = 0;
+				while (pthread_mutex_trylock(&serial_access) != 0)
+				{
+					usleep(1000);
+					trying_time ++;
+					if (trying_time > 10)
+						break;
+				}
+				if (trying_time > 10)
+				{
+					printf("Thread: %d. host: %d. Fail to access serial port.\n",
+							(int)polling_thread[host], host);
+				}
+				else
 				{
 					if (queryData(&dev_host[host]))
 					{
-						printf("Thread: %d. host: %d. Got data from client.\n",
+						printf("Thread: %d. host: %d. Got data from device.\n",
 								(int)polling_thread[host], host);
 					}
 					else
 					{
-						printf("Thread: %d. host: %d. No client here.\n",
+						printf("Thread: %d. host: %d. No device here.\n",
 								(int)polling_thread[host], host);
 
 					}
 					pthread_mutex_unlock(&serial_access);
-				}
-				else
-				{
-					printf("Thread: %d. host: %d. Fail to access serial port.\n",
-							(int)polling_thread[host], host);
 				}
 			}
 			usleep(time_poll);
@@ -332,9 +407,7 @@ int Device_init(void)
 	printf("Initial Sensor Host.\r\n");
 
 	pthread_mutex_init(&device_control_access, NULL);
-//	pthread_mutex_unlock(&device_control_access);
 	pthread_mutex_init(&serial_access, NULL);
-//	pthread_mutex_unlock(&serial_access);
 
 	RaspiExt_Init();
 
@@ -345,6 +418,7 @@ int Device_init(void)
 		dev_host[i].data_type = TYPE_FLOAT;
 		dev_host[i].number = 0xff;	// unknown
 		dev_host[i].type = 0xff;		// unknown
+		dev_host[i].data = NULL;
 		dev_host[i].polling_control.enable = 0;
 		dev_host[i].polling_control.time_poll_ms = 50;
 		dev_host[i].polling_control.destroy = 0;
@@ -396,5 +470,21 @@ int Device_destroyAll(void)
 	}
 	pthread_mutex_unlock(&device_control_access);
 
+	RaspiExt_DestroyAll();
+
+	return 0;
+}
+
+int Device_waitForExit(void)
+{
+	if (pthread_equal(pthread_self(), polling_thread[0]) == 0)
+		pthread_join(polling_thread[0], NULL);
+	if (pthread_equal(pthread_self(), polling_thread[1]) == 0)
+		pthread_join(polling_thread[1], NULL);
+	if (pthread_equal(pthread_self(), polling_thread[2]) == 0)
+		pthread_join(polling_thread[2], NULL);
+	if (pthread_equal(pthread_self(), polling_thread[3]) == 0)
+		pthread_join(polling_thread[3], NULL);
+	RaspiExt_WaitForExit();
 	return 0;
 }
