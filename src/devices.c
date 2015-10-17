@@ -14,12 +14,12 @@
 #else
 // Swap 2 byte, 16 bit values:
 #define Swap2Bytes(val) \
-( (((val) >> 8) & 0x00FF) | (((val) << 8) & 0xFF00) )
+		( (((val) >> 8) & 0x00FF) | (((val) << 8) & 0xFF00) )
 
 // Swap 4 byte, 32 bit values:
 #define Swap4Bytes(val) \
-( (((val) >> 24) & 0x000000FF) | (((val) >>  8) & 0x0000FF00) | \
-		(((val) <<  8) & 0x00FF0000) | (((val) << 24) & 0xFF000000) )
+		( (((val) >> 24) & 0x000000FF) | (((val) >>  8) & 0x0000FF00) | \
+				(((val) <<  8) & 0x00FF0000) | (((val) << 24) & 0xFF000000) )
 
 // Swap 8 byte, 64 bit values:
 #define Swap8Bytes(val) \
@@ -106,7 +106,7 @@ int queryData(struct Device * dev)
 		}
 	}
 
-	DeviceInfo(dev);
+	//	DeviceInfo(dev);
 
 	if (IS_MY_THESIS(dev->type))
 	{
@@ -148,6 +148,17 @@ int queryData(struct Device * dev)
 	if (packet_len)
 	{
 		Serial_GetData((char *) packet, packet_len);
+
+#ifdef __DEBUG_MODE
+		printf("Received Packet: ");
+		int i;
+		for (i = 0; i < packet_len + 1; i++)
+		{
+			printf("%02X ", *((unsigned char *) packet + i));
+		}
+		printf("Checksum: %02X.\n", *(((char *)packet) + packet_len));
+		printf("\n");
+#endif
 
 		if (dev->data_type != (packet->data_type & 0x0f))
 		{
@@ -250,6 +261,7 @@ void * DevicePolling(void * host_number) // thread
 					{
 						printf("Thread: %d. host: %d. Got data from device.\n",
 								(int)polling_thread[host], host);
+						DeviceInfo(&dev_host[host]);
 					}
 					else
 					{
@@ -264,7 +276,7 @@ void * DevicePolling(void * host_number) // thread
 				{
 				case DEV_SENSOR_TEMPERATURE:
 					printf("Thread: %d. host: %d. Temperature: %0.3f.\n",
-												(int)polling_thread[host], host, *(float *)(dev_host[host].data));
+							(int)polling_thread[host], host, *(float *)(dev_host[host].data));
 
 					// adjust time polling
 
@@ -272,6 +284,13 @@ void * DevicePolling(void * host_number) // thread
 
 					break;
 				case DEV_SENSOR_ULTRA_SONIC:
+					printf("Thread: %d. host: %d. Distance: %0.3f.\n",
+							(int)polling_thread[host], host, *(float *)(dev_host[host].data));
+
+					// adjust time polling
+
+					// save to shared memory
+
 					break;
 				case DEV_SENSOR_LIGTH:
 					break;
@@ -371,7 +390,7 @@ int Device_startPooling(int host_number)
 	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-//	pthread_mutex_lock(&device_control_access);
+	//	pthread_mutex_lock(&device_control_access);
 	dev_host[host_number-1].polling_control.enable = 1;
 	pthread_mutex_unlock(&device_control_access);
 
@@ -383,7 +402,7 @@ int Device_stopPooling(int host_number)
 	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-//	pthread_mutex_lock(&device_control_access);
+	//	pthread_mutex_lock(&device_control_access);
 	dev_host[host_number].polling_control.enable = 0;
 	pthread_mutex_unlock(&device_control_access);
 
@@ -396,7 +415,7 @@ int Device_destroyAll(void)
 	while(pthread_mutex_trylock(&device_control_access) != 0)
 		usleep(100);
 
-//	pthread_mutex_lock(&device_control_access);
+	//	pthread_mutex_lock(&device_control_access);
 	for (i = 0; i < DEV_HOST_NUMBER; i++)
 	{
 		dev_host[i].polling_control.destroy = 1;

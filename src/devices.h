@@ -8,6 +8,7 @@
 #ifndef DEVICES_H_
 #define DEVICES_H_
 
+#include "packet.h"
 
 struct polling_control
 {
