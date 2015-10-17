@@ -56,7 +56,6 @@ pthread_mutex_t device_control_access = PTHREAD_MUTEX_INITIALIZER;
 // protect serial access
 pthread_mutex_t serial_access = PTHREAD_MUTEX_INITIALIZER;
 
-
 int sendControl(struct Device dev)
 {
 	int packet_len = 3 + getTypeLength(dev.data_type);
