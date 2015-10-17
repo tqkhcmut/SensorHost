@@ -49,6 +49,11 @@ pthread_t power_off_button_thread;
 #define POWER_PIN		4 // to cutoff power
 #define POWER_OFF_PIN	1
 
+#define HOST_SE1		5
+#define HOST_SE2		6
+#define HOST_SE3		21
+#define HOST_SE4		22
+
 void LED_Run_On(unsigned char * currState)
 {
 #ifdef __DEBUG_MODE
@@ -336,8 +341,19 @@ int RaspiExt_Init(void)
 	pinMode(LED_HOST4_PIN, OUTPUT);
 	pinMode(POWER_PIN, OUTPUT);
 	pinMode(POWER_OFF_PIN, INPUT);
+	pinMode(HOST_SE1, OUTPUT);
+	pinMode(HOST_SE2, OUTPUT);
+	pinMode(HOST_SE3, OUTPUT);
+	pinMode(HOST_SE4, OUTPUT);
+
 	// hold on power pin
 	digitalWrite(POWER_PIN, HIGH);
+
+	// deactive all select pin
+	digitalWrite(HOST_SE1, HIGH);
+	digitalWrite(HOST_SE2, HIGH);
+	digitalWrite(HOST_SE3, HIGH);
+	digitalWrite(HOST_SE4, HIGH);
 
 
 	LED_Run.mode = LED_MODE_TOGGLE;
@@ -518,5 +534,48 @@ int RaspiExt_DS1307_GetDate(Date_t * d)
 int RaspiExt_DS1307_SetDate(Date_t d)
 {
 
+	return 0;
+}
+
+int RaspiExt_Pin_Hostx_Active(int host)
+{
+	switch(host)
+	{
+	case 1:
+		digitalWrite(HOST_SE1, LOW);
+		break;
+	case 2:
+		digitalWrite(HOST_SE2, LOW);
+		break;
+	case 3:
+		digitalWrite(HOST_SE3, LOW);
+		break;
+	case 4:
+		digitalWrite(HOST_SE4, LOW);
+		break;
+	default:
+		return -1;
+	}
+	return 0;
+}
+int RaspiExt_Pin_Hostx_Deactive(int host)
+{
+	switch(host)
+	{
+	case 1:
+		digitalWrite(HOST_SE1, HIGH);
+		break;
+	case 2:
+		digitalWrite(HOST_SE2, HIGH);
+		break;
+	case 3:
+		digitalWrite(HOST_SE3, HIGH);
+		break;
+	case 4:
+		digitalWrite(HOST_SE4, HIGH);
+		break;
+	default:
+		return -1;
+	}
 	return 0;
 }

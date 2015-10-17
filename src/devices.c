@@ -257,6 +257,7 @@ void * DevicePolling(void * host_number) // thread
 				}
 				else
 				{
+					RaspiExt_Pin_Hostx_Active(host);
 					if (queryData(&dev_host[host]))
 					{
 						printf("Thread: %d. host: %d. Got data from device.\n",
@@ -269,6 +270,7 @@ void * DevicePolling(void * host_number) // thread
 								(int)polling_thread[host], host);
 
 					}
+					RaspiExt_Pin_Hostx_Deactive(host);
 					pthread_mutex_unlock(&serial_access);
 				}
 
@@ -335,6 +337,7 @@ void * DevicePolling(void * host_number) // thread
 				}
 				else
 				{
+					RaspiExt_Pin_Hostx_Active(host);
 					if (queryData(&dev_host[host]))
 					{
 						printf("Thread: %d. host: %d. Got data from device.\n",
@@ -346,6 +349,8 @@ void * DevicePolling(void * host_number) // thread
 								(int)polling_thread[host], host);
 
 					}
+					RaspiExt_Pin_Hostx_Deactive(host);
+
 					pthread_mutex_unlock(&serial_access);
 				}
 			}
@@ -372,7 +377,7 @@ int Device_init(void)
 		dev_host[i].type = 0xff;		// unknown
 		dev_host[i].data = NULL;
 		dev_host[i].polling_control.enable = 0;
-		dev_host[i].polling_control.time_poll_ms = 50;
+		dev_host[i].polling_control.time_poll_ms = 200;
 		dev_host[i].polling_control.destroy = 0;
 
 		printf("Create thread poll for Sensor Host %d.\r\n", i);
