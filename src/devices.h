@@ -8,7 +8,12 @@
 #ifndef DEVICES_H_
 #define DEVICES_H_
 
+#include "global_config.h"
 #include "packet.h"
+
+#ifndef DEVICE_DEBUG
+#define DEVICE_DEBUG 	0
+#endif
 
 struct polling_control
 {

@@ -56,7 +56,7 @@ pthread_t power_off_button_thread;
 
 void LED_Run_On(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn on led run.\n");
 #endif
 	digitalWrite(LED_RUN_PIN, HIGH);
@@ -64,7 +64,7 @@ void LED_Run_On(unsigned char * currState)
 }
 void LED_Run_Off(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn off led run.\n");
 #endif
 	digitalWrite(LED_RUN_PIN, LOW);
@@ -72,7 +72,7 @@ void LED_Run_Off(unsigned char * currState)
 }
 void LED_Run_Toggle(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Toggle led run.\n");
 #endif
 	if (*currState)
@@ -88,7 +88,7 @@ void LED_Run_Toggle(unsigned char * currState)
 }
 void LED_Power_On(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn on led power.\n");
 #endif
 	digitalWrite(LED_POWER_PIN, HIGH);
@@ -96,7 +96,7 @@ void LED_Power_On(unsigned char * currState)
 }
 void LED_Power_Off(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn off led power.\n");
 #endif
 	digitalWrite(LED_POWER_PIN, LOW);
@@ -104,7 +104,7 @@ void LED_Power_Off(unsigned char * currState)
 }
 void LED_Power_Toggle(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Toggle led power.\n");
 #endif
 	if (*currState)
@@ -120,7 +120,7 @@ void LED_Power_Toggle(unsigned char * currState)
 }
 void LED_Host1_On(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn on led host 1.\n");
 #endif
 	digitalWrite(LED_HOST1_PIN, HIGH);
@@ -128,7 +128,7 @@ void LED_Host1_On(unsigned char * currState)
 }
 void LED_Host1_Off(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn off led host 1.\n");
 #endif
 	digitalWrite(LED_HOST1_PIN, LOW);
@@ -136,7 +136,7 @@ void LED_Host1_Off(unsigned char * currState)
 }
 void LED_Host1_Toggle(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Toggle led host 1.\n");
 #endif
 	if (*currState)
@@ -152,7 +152,7 @@ void LED_Host1_Toggle(unsigned char * currState)
 }
 void LED_Host2_On(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn on led host 2.\n");
 #endif
 	digitalWrite(LED_HOST2_PIN, HIGH);
@@ -160,7 +160,7 @@ void LED_Host2_On(unsigned char * currState)
 }
 void LED_Host2_Off(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn off led host 2.\n");
 #endif
 	digitalWrite(LED_HOST2_PIN, LOW);
@@ -168,7 +168,7 @@ void LED_Host2_Off(unsigned char * currState)
 }
 void LED_Host2_Toggle(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Toggle led host 2.\n");
 #endif
 	if (*currState)
@@ -184,7 +184,7 @@ void LED_Host2_Toggle(unsigned char * currState)
 }
 void LED_Host3_On(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn on led host 3.\n");
 #endif
 	digitalWrite(LED_HOST3_PIN, HIGH);
@@ -192,7 +192,7 @@ void LED_Host3_On(unsigned char * currState)
 }
 void LED_Host3_Off(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn off led host 3.\n");
 #endif
 	digitalWrite(LED_HOST3_PIN, LOW);
@@ -200,7 +200,7 @@ void LED_Host3_Off(unsigned char * currState)
 }
 void LED_Host3_Toggle(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Toggle led host 3.\n");
 #endif
 	if (*currState)
@@ -216,7 +216,7 @@ void LED_Host3_Toggle(unsigned char * currState)
 }
 void LED_Host4_On(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn on led host 4.\n");
 #endif
 	digitalWrite(LED_HOST4_PIN, HIGH);
@@ -224,7 +224,7 @@ void LED_Host4_On(unsigned char * currState)
 }
 void LED_Host4_Off(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Turn off led host 4.\n");
 #endif
 	digitalWrite(LED_HOST4_PIN, LOW);
@@ -232,7 +232,7 @@ void LED_Host4_Off(unsigned char * currState)
 }
 void LED_Host4_Toggle(unsigned char * currState)
 {
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Toggle led host 4.\n");
 #endif
 	if (*currState)
@@ -290,6 +290,9 @@ void * LED_Thread(void * parameters)
 			}
 			break;
 		default:
+#if RASPI_EXT_DEBUG
+		printf("LED Thread: Invalid LED mode %d.\n", led_ctrl->mode);
+#endif
 			break;
 		}
 		usleep(1000);
@@ -313,7 +316,7 @@ void * ButtonThread (void * params)
 		}
 		if (hold_time > 3) // about 1.5 seconds
 		{
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 			printf("Power off detected.\n");
 			printf("Shutdown system.\n");
 #endif
@@ -328,10 +331,14 @@ int RaspiExt_Init(void)
 {
 	if (wiringPiSetup() != 0)
 	{
+#if RASPI_EXT_DEBUG
 		printf("Initial wiringPi fail.\n");
+#endif
 		return -1;
 	}
+#if RASPI_EXT_DEBUG
 	printf("Initial wiringPi successful.\n");
+#endif
 
 	pinMode(LED_RUN_PIN, OUTPUT);
 	pinMode(LED_POWER_PIN, OUTPUT);
@@ -397,7 +404,7 @@ int RaspiExt_Init(void)
 	LED_Host4.On = LED_Host4_On;
 	LED_Host4.Off = LED_Host4_Off;
 	LED_Host4.Toggle = LED_Host4_Toggle;
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Create thread for control LED.\n");
 #endif
 	pthread_create(&led_run_thread, NULL, &LED_Thread, (void *)&LED_Run);
@@ -407,7 +414,7 @@ int RaspiExt_Init(void)
 	pthread_create(&led_host3_thread, NULL, &LED_Thread, (void *)&LED_Host3);
 	pthread_create(&led_host4_thread, NULL, &LED_Thread, (void *)&LED_Host4);
 
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 	printf("Create thread for control power button.\n");
 #endif
 	pthread_create(&power_off_button_thread, NULL, &ButtonThread, NULL);
@@ -431,7 +438,7 @@ int RaspiExt_LED_Run_Config(unsigned char mode, int time_ms)
 {
 	if (mode != LED_MODE_ON && mode != LED_MODE_OFF && mode != LED_MODE_TOGGLE)
 	{
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 		printf("LED Run Config: Not own mode.\n");
 #endif
 		return -1;
@@ -444,7 +451,7 @@ int RaspiExt_LED_Power_Config(unsigned char mode, int time_ms)
 {
 	if (mode != LED_MODE_ON && mode != LED_MODE_OFF && mode != LED_MODE_TOGGLE)
 	{
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 		printf("LED Power Config: Not own mode.\n");
 #endif
 		return -1;
@@ -457,7 +464,7 @@ int RaspiExt_LED_Hostx_Config(unsigned char mode, int time_ms, int host)
 {
 	if (mode != LED_MODE_ON && mode != LED_MODE_OFF && mode != LED_MODE_TOGGLE)
 	{
-#ifdef __DEBUG_MODE
+#if RASPI_EXT_DEBUG
 		printf("LED Hostx Config: Not own mode.\n");
 #endif
 		return -1;
@@ -481,6 +488,9 @@ int RaspiExt_LED_Hostx_Config(unsigned char mode, int time_ms, int host)
 		LED_Host4.time_ms = time_ms;
 		break;
 	default:
+#if RASPI_EXT_DEBUG
+		printf("RaspiExt LED Host Config: Invalid host %d.\n", host);
+#endif
 		return -1;
 	}
 	return 0;
@@ -554,11 +564,14 @@ int RaspiExt_Pin_Hostx_Active(int host)
 		digitalWrite(HOST_SE4, LOW);
 		break;
 	default:
+#if RASPI_EXT_DEBUG
+		printf("RaspiExt Host Active: Invalid host %d.\n", host);
+#endif
 		return -1;
 	}
 	return 0;
 }
-int RaspiExt_Pin_Hostx_Deactive(int host)
+int RaspiExt_Pin_Hostx_Inactive(int host)
 {
 	switch(host)
 	{
@@ -575,6 +588,9 @@ int RaspiExt_Pin_Hostx_Deactive(int host)
 		digitalWrite(HOST_SE4, HIGH);
 		break;
 	default:
+#if RASPI_EXT_DEBUG
+		printf("RaspiExt Host Inactive: Invalid host %d.\n", host);
+#endif
 		return -1;
 	}
 	return 0;
