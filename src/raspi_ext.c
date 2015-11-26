@@ -528,3 +528,106 @@ int RaspiExt_LED_Hostx_Config(unsigned char mode, int time_ms, int host)
 #if RASPI_EXT_DEBUG
 		printf("LED Hostx Config: Cannot access led tocken.\n");
 #endif 
+	}
+	return 0;
+}
+
+
+int RaspiExt_DestroyAll(void)
+{
+	pthread_cancel(led_run_thread);
+	pthread_cancel(led_power_thread);
+	pthread_cancel(led_host1_thread);
+	pthread_cancel(led_host2_thread);
+	pthread_cancel(led_host3_thread);
+	pthread_cancel(led_host4_thread);
+	pthread_cancel(power_off_button_thread);
+	return 0;
+}
+int RaspiExt_WaitForExit(void)
+{
+	if (pthread_equal(pthread_self(), led_run_thread) == 0)
+		pthread_join(led_run_thread, NULL);
+	if (pthread_equal(pthread_self(), led_power_thread) == 0)
+		pthread_join(led_power_thread, NULL);
+	if (pthread_equal(pthread_self(), led_host1_thread) == 0)
+		pthread_join(led_host1_thread, NULL);
+	if (pthread_equal(pthread_self(), led_host2_thread) == 0)
+		pthread_join(led_host2_thread, NULL);
+	if (pthread_equal(pthread_self(), led_host3_thread) == 0)
+		pthread_join(led_host3_thread, NULL);
+	if (pthread_equal(pthread_self(), led_host4_thread) == 0)
+		pthread_join(led_host4_thread, NULL);
+	if (pthread_equal(pthread_self(), power_off_button_thread) == 0)
+		pthread_join(power_off_button_thread, NULL);
+	return 0;
+}
+int RaspiExt_DS1307_GetTime(Time_t * t)
+{
+
+	return 0;
+}
+int RaspiExt_DS1307_SetTime(Time_t t)
+{
+
+	return 0;
+}
+int RaspiExt_DS1307_GetDate(Date_t * d)
+{
+
+	return 0;
+}
+int RaspiExt_DS1307_SetDate(Date_t d)
+{
+
+	return 0;
+}
+
+int RaspiExt_Pin_Hostx_Active(int host)
+{
+	switch(host)
+	{
+	case 1:
+		digitalWrite(HOST_SE1, LOW);
+		break;
+	case 2:
+		digitalWrite(HOST_SE2, LOW);
+		break;
+	case 3:
+		digitalWrite(HOST_SE3, LOW);
+		break;
+	case 4:
+		digitalWrite(HOST_SE4, LOW);
+		break;
+	default:
+#if RASPI_EXT_DEBUG
+		printf("RaspiExt Host Active: Invalid host %d.\n", host);
+#endif
+		return -1;
+	}
+	return 0;
+}
+int RaspiExt_Pin_Hostx_Inactive(int host)
+{
+	switch(host)
+	{
+	case 1:
+		digitalWrite(HOST_SE1, HIGH);
+		break;
+	case 2:
+		digitalWrite(HOST_SE2, HIGH);
+		break;
+	case 3:
+		digitalWrite(HOST_SE3, HIGH);
+		break;
+	case 4:
+		digitalWrite(HOST_SE4, HIGH);
+		break;
+	default:
+#if RASPI_EXT_DEBUG
+		printf("RaspiExt Host Inactive: Invalid host %d.\n", host);
+#endif
+		return -1;
+	}
+	return 0;
+}
