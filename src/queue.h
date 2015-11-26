@@ -1,18 +1,29 @@
-/*
- * queue.h
- *
- *  Created on: Sep 26, 2015
- *      Author: kieutq
- */
+#ifndef _queue_h_
+#define _queue_h_
 
-#ifndef SRC_QUEUE_H_
-#define SRC_QUEUE_H_
+#include <pthread.h>
 
-typedef int Queue_t;
+#ifndef NULL
+#define NULL (void*)0
+#endif // !NULL
 
-int Queue_Init(Queue_t * queue, int queue_size, int data_size);
-int Queue_Send(Queue_t * queue, void * data, int data_size);
-int Queue_Receive(Queue_t * queue, void * data, int data_size);
-int Queue_Length(Queue_t * queue);
+struct QueueData
+{
+	struct QueueData * next, * previous;
+	char * data;
+};
+struct Queue
+{
+	pthread_mutex_t token;
+	int data_len;
+	unsigned int queue_length;
+	struct QueueData * head, * tail;
+};
 
-#endif /* SRC_QUEUE_H_ */
+typedef struct Queue Queue_t;
+
+extern int QueueCreate(Queue_t * queue, int data_len);
+extern int QueueEnQueue(Queue_t * queue, void * data);
+extern int QueueDeQueue(Queue_t * queue, void * data);
+extern int QueueDestroy(Queue_t * queue);
+#endif // !_queue_h_

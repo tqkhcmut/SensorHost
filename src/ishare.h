@@ -8,7 +8,8 @@
 #ifndef SRC_ISHARE_H_
 #define SRC_ISHARE_H_
 
-// #include <pthread.h>
+#include "queue.h"
+#include <inttypes.h>
 
 
 // File format
@@ -16,38 +17,35 @@
 // Sensor Type // Sensor Number // Sensor Data Count // Sensor Data // ... // Sensor Data //
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-struct iShareData
-{
-	float time; // in seconds, include 3 numbers after float point. Like this: xxx.yyy (x - seconds, y - millisecond)
-	float data; // all data must be in float format.
-	struct iShareData * next;
-};
-
-struct iShareHeader
+struct iShare
 {
 	unsigned char SensorType;
 	unsigned char SensorNumber;
-	unsigned int SensorDataCount;
-	struct iShareData * SensorData;
+	Queue_t data_in_queue;
+	void * p; // private data, do not modify this
 };
 
-/*
 
-// Common mutex protection
-pthread_mutex_t iShareAccess = PTHREAD_MUTEX_INITIALIZER;
-
-// Common file name saved on external store (not RAM memory)
-const char * iShareFilename = "raspido.dat";
-
-*/
+struct SharedMemoryData	
+{
+	unsigned char SensorType;
+	unsigned char SensorNumber;
+	unsigned int DataCount;
+	void * SensorData; // sensor data struct, define in packet.h
+};
 
 // use shared memory
 #define ISHARE_MEM_SIZE 1048576 // 1Mb for each sensor
 
-// Some function
-extern int iShare_Init(struct iShareHeader * iShareHeader); // return shared memory key
+// Initial iShare struct, create thread to handle it
+// The thread is automatic save data to shared memory, push it to server and save to disk when 
+// shared memory is full
+extern int iShare_Init(struct iShare * iShare); // return shared memory key
+extern int iShare_DeInit(struct iShare * iShare);
 
-extern int iShare_SaveToDisk(struct iShareHeader * iShareHeader, const char * filename);
-extern int iShare_RestoreFromDisk(struct iShareHeader * iShareHeader, const char * filename);
-
+// some utility function
+extern int iShareGetSHMKey(struct iShare ishare);
+extern int iShareGetSavedFilename(struct iShare ishare, char * filename_buffer);
+extern int iShare_SaveToDisk(struct SharedMemoryData * ishare_data, const char * filename);
+extern int iShare_RestoreFromDisk(struct SharedMemoryData * ishare_data, const char * filename);
 #endif /* SRC_ISHARE_H_ */
