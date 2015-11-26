@@ -71,4 +71,3 @@ uint8_t checksum(char * packet)
 	checksum = !checksum + 1;
 	return checksum;
 }
-
